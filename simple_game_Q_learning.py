@@ -22,12 +22,12 @@ class RLAgent:
         td_error = td_target - self.Q[state][action]
         self.Q[state][action] += self.alpha * td_error
 
-def train_q_learning(num_episodes=100000, epsilon_decay=0.999):
-    agent = RLAgent(epsilon=1)
+def train_q_learning(num_episodes=100000):
+    agent = RLAgent()
     game = SimpleGame()
 
     for _ in range(num_episodes):
-        state = game.reset()  # Already a tuple
+        state = game.reset()  
         done = False
         while not done:
             action = agent.choose_action(state)
@@ -36,14 +36,15 @@ def train_q_learning(num_episodes=100000, epsilon_decay=0.999):
 
             next_state, done, winner = game.step(action_name, bet_amt)
             if action_name == 'fold':
-                reward = -10000  # Penalize folding slightly
+                if game.pot == 0:
+                    reward = -10
+                else:
+                    reward = -1 * bet_amt  # Penalize folding slightly
             else:
                 reward = game.pot if winner == game.current_player else -100
 
             agent.update(state, action, reward, next_state, done)
             state = next_state
-
-        agent.epsilon= max(0.01, agent.epsilon * epsilon_decay)
 
     return agent
 

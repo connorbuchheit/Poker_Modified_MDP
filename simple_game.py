@@ -11,7 +11,7 @@ class SimpleGame:
         self.player0_cards = [self.deck.pop(), self.deck.pop()] # deal two cars each
         self.player1_cards = [self.deck.pop(), self.deck.pop()] # I say player 0 and player 1 for easier boolean logic in simple case
         self.pot = 0 # initialize reward pot
-        self.current_player = 0 # player 1 begins the game
+        self.current_player = np.random.choice([0, 1])  
         self.done = False
         self.winner = None 
         return self.get_state()
@@ -19,7 +19,6 @@ class SimpleGame:
     def get_state(self):
         return (self.pot, self.current_player, tuple(self.player0_cards), tuple(self.player1_cards)) # TODO: Should both players be visible?
 
-    
     def step(self, action, bet_amt=100):
         if self.done:
             raise ValueError('Game over. Call reset()')
@@ -30,7 +29,8 @@ class SimpleGame:
         elif action == 'fold':
             self.done = True 
             self.current_player = (self.current_player + 1) % 2
-            self.winner = self.current_player 
+            if self.pot != 0:
+                self.winner = self.current_player 
 
         return self.get_state(), self.done, self.winner 
     
@@ -40,7 +40,7 @@ class SimpleGame:
         elif max(self.player0_cards) < max(self.player1_cards):
             self.winner = 1
         else:
-            self.winner = 0 # Tie — probably play again in this case.
+            self.winner = None # Tie — probably play again in this case.
 
 
 def simulate_random_games(num_games):
