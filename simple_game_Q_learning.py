@@ -53,8 +53,7 @@ def evaluate_policy(agent, num_games=1000):
         state = game.reset()
         done = False
         while not done:
-            state_tuple = tuple(state.values())
-            action = agent.choose_action(state_tuple)
+            action = agent.choose_action(state)
             action_name = 'fold' if action == 0 else 'bet'
             bet_amt = 100 if action_name == 'bet' else 0
             state, done, winner = game.step(action_name, bet_amt)

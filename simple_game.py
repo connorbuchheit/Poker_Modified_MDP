@@ -60,6 +60,6 @@ def simulate_random_games(num_games):
     return results
 
 # Run n simulations
-n = 100000
-results = simulate_random_games(n)
-print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
+# n = 100000
+# results = simulate_random_games(n)
+# print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
