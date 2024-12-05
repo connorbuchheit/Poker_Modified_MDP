@@ -13,7 +13,7 @@ class RLAgent:
         if np.random.rand() < self.epsilon:  # exploration
             return np.random.choice([0, 1])  
         else:  # exploitation 
-            # print(state)
+            print(state)
             return np.argmax(self.Q[state])  
 
     def update(self, state, action, reward, next_state, done):
@@ -22,8 +22,8 @@ class RLAgent:
         td_error = td_target - self.Q[state][action]
         self.Q[state][action] += self.alpha * td_error
 
-def train_q_learning(num_episodes=10000):
-    agent = RLAgent()
+def train_q_learning(num_episodes=100000, epsilon_decay=0.999):
+    agent = RLAgent(epsilon=1)
     game = SimpleGame()
 
     for _ in range(num_episodes):
@@ -35,10 +35,15 @@ def train_q_learning(num_episodes=10000):
             bet_amt = 100 if action_name == 'bet' else 0
 
             next_state, done, winner = game.step(action_name, bet_amt)
-            reward = game.pot if winner == game.current_player else -100
+            if action_name == 'fold':
+                reward = -10000  # Penalize folding slightly
+            else:
+                reward = game.pot if winner == game.current_player else -100
 
             agent.update(state, action, reward, next_state, done)
             state = next_state
+
+        agent.epsilon= max(0.01, agent.epsilon * epsilon_decay)
 
     return agent
 
@@ -55,8 +60,12 @@ def evaluate_policy(agent, num_games=1000):
         while not done:
             action = agent.choose_action(state)
             action_name = 'fold' if action == 0 else 'bet'
-            bet_amt = 100 if action_name == 'bet' else 0
+            bet_amt = 100
             state, done, winner = game.step(action_name, bet_amt)
+            if action_name == 'fold':
+                reward = -bet_amt  # Penalize folding slightly
+            else:
+                reward = game.pot if winner == game.current_player else -100
         if winner is not None:
             wins[winner] += 1
     return wins
