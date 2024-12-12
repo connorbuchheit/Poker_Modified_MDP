@@ -1,7 +1,10 @@
 import numpy as np
 
 class SimpleGame:
-    def __init__(self):
+    def __init__(self, opponent_strat='random', max_turns=5):
+        self.opponent_strategy = opponent_strat
+        self.max_turns = max_turns
+        self.turns = 0
         self.reset()
 
     def reset(self):
@@ -17,11 +20,13 @@ class SimpleGame:
         return self.get_state()
 
     def get_state(self):
-        return (self.pot, self.current_player, tuple(self.player0_cards), tuple(self.player1_cards)) # TODO: Should both players be visible?
+        return (self.pot, self.current_player, tuple(self.player0_cards), tuple(self.player1_cards)) 
 
     def step(self, action, bet_amt=100):
         if self.done:
             raise ValueError('Game over. Call reset()')
+        
+        self.turns += 1
    
         if action == 'bet': 
             self.pot += bet_amt # TODO: Play with the bet amt and see how things change
@@ -31,6 +36,10 @@ class SimpleGame:
             self.current_player = (self.current_player + 1) % 2
             if self.pot != 0:
                 self.winner = self.current_player 
+            
+        if self.turns >= self.max_turns:
+            self.done = True
+            self.determine_winner()
 
         return self.get_state(), self.done, self.winner 
     
@@ -42,6 +51,12 @@ class SimpleGame:
         else:
             self.winner = None # Tie — probably play again in this case.
 
+    def get_opponent_action(self):
+        if self.opponent_strategy == 'raise':
+            return 'bet'
+        else:
+            return np.random.choice(['bet', 'fold'])
+
 
 def simulate_random_games(num_games):
     results = []
@@ -50,8 +65,11 @@ def simulate_random_games(num_games):
         state = game.reset()
         done = False
         while not done:
-            action = np.random.choice(['bet', 'fold'])
-            bet_amt = np.random.randint(1, 11) if action == 'bet' else 0
+            if state[1] == 0: # This is equal to self.current_player
+                action = np.random.choice(['bet', 'fold'])
+            elif state[1] == 1:
+                action = game.get_opponent_action()
+            bet_amt = 100 if action == 'bet' else 0
             try:
                 state, done, winner = game.step(action, bet_amt)
             except ValueError:
@@ -60,6 +78,6 @@ def simulate_random_games(num_games):
     return results
 
 # Run n simulations
-# n = 100000
-# results = simulate_random_games(n)
-# print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
+n = 100000
+results = simulate_random_games(n)
+print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
