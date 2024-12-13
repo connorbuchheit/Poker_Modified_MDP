@@ -88,24 +88,24 @@ class SimpleGame:
             return np.random.choice(['bet', 'fold'])
 
 
-# def simulate_random_games(num_games):
-#     results = []
-#     for _ in range(num_games):
-#         game = SimpleGame()
-#         pot, player, p0_cards = game.reset()
-#         done = False
-#         while not done:
-#             if player == 0: # This is equal to self.current_player
-#                 action = np.random.choice(['bet', 'fold'])
-#             elif player == 1:
-#                 action = game.get_opponent_action()
-#             bet_amt = 100 if action == 'bet' else 0
-#             state, done, winner, player = game.step(action, bet_amt)
-#         results.append(winner)
-#     return results
+def simulate_random_games(num_games):
+    results = []
+    for _ in range(num_games):
+        game = SimpleGame()
+        pot, player, p0_cards = game.reset()
+        done = False
+        while not done:
+            if player == 0: # This is equal to self.current_player
+                action = np.random.choice(['bet', 'fold'])
+            elif player == 1:
+                action = game.get_opponent_action()
+            bet_amt = 100 if action == 'bet' else 0
+            state, done, winner, player = game.step(action, bet_amt)
+        results.append(winner)
+    return results
 
 # Run n simulations
-# n = 100000
-# results = simulate_random_games(n)
-# print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
-# print(f"Ties: {results.count(2) / n}%")
+n = 100000
+results = simulate_random_games(n)
+print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
+print(f"Ties: {results.count(2) / n}%")

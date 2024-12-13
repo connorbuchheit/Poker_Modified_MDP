@@ -55,22 +55,6 @@ def train_q_learning(num_episodes=1000000):
 # train
 agent = train_q_learning()
 
-# evaluate policy
-# def evaluate_policy(agent, num_games=1000):
-#     game = SimpleGame()  # Test against the same strategy
-#     wins = [0, 0, 0]
-#     for _ in range(num_games):
-#         state = game.reset()
-#         done = False
-#         while not done:
-#             action = agent.choose_action(state)
-#             action_name = 'check' if action == 0 else 'raise'
-#             bet_amt = 100 if action_name == 'raise' else 0
-#             state, done, winner = game.step(action_name, bet_amt)
-
-#         wins[winner] += 1
-#     return wins
-
 def evaluate_policy(agent, num_games=1000):
     game = SimpleGame()  # Test against the same strategy
     wins = [0, 0, 0]
