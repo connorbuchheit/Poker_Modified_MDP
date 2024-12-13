@@ -13,7 +13,7 @@ class RLAgent:
         if np.random.rand() < self.epsilon:  # exploration
             return np.random.choice([0, 1])  
         else:  # exploitation 
-            # print(state)
+            print(state)
             return np.argmax(self.Q[state])  
 
     def update(self, state, action, reward, next_state, done):
@@ -22,12 +22,12 @@ class RLAgent:
         td_error = td_target - self.Q[state][action]
         self.Q[state][action] += self.alpha * td_error
 
-def train_q_learning(num_episodes=10000):
+def train_q_learning(num_episodes=100000):
     agent = RLAgent()
     game = SimpleGame()
 
     for _ in range(num_episodes):
-        state = game.reset()  # Already a tuple
+        state = game.reset()  
         done = False
         while not done:
             action = agent.choose_action(state)
@@ -35,7 +35,13 @@ def train_q_learning(num_episodes=10000):
             bet_amt = 100 if action_name == 'bet' else 0
 
             next_state, done, winner = game.step(action_name, bet_amt)
-            reward = game.pot if winner == game.current_player else -100
+            if action_name == 'fold':
+                if game.pot == 0:
+                    reward = -10
+                else:
+                    reward = -1 * bet_amt  # Penalize folding slightly
+            else:
+                reward = game.pot if winner == game.current_player else -100
 
             agent.update(state, action, reward, next_state, done)
             state = next_state
@@ -53,11 +59,14 @@ def evaluate_policy(agent, num_games=1000):
         state = game.reset()
         done = False
         while not done:
-            state_tuple = tuple(state.values())
-            action = agent.choose_action(state_tuple)
+            action = agent.choose_action(state)
             action_name = 'fold' if action == 0 else 'bet'
-            bet_amt = 100 if action_name == 'bet' else 0
+            bet_amt = 100
             state, done, winner = game.step(action_name, bet_amt)
+            if action_name == 'fold':
+                reward = -bet_amt  # Penalize folding slightly
+            else:
+                reward = game.pot if winner == game.current_player else -100
         if winner is not None:
             wins[winner] += 1
     return wins

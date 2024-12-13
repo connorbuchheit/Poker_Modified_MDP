@@ -1,7 +1,10 @@
 import numpy as np
 
 class SimpleGame:
-    def __init__(self):
+    def __init__(self, opponent_strat='random', max_turns=5):
+        self.opponent_strategy = opponent_strat
+        self.max_turns = max_turns
+        self.turns = 0
         self.reset()
 
     def reset(self):
@@ -11,18 +14,19 @@ class SimpleGame:
         self.player0_cards = [self.deck.pop(), self.deck.pop()] # deal two cars each
         self.player1_cards = [self.deck.pop(), self.deck.pop()] # I say player 0 and player 1 for easier boolean logic in simple case
         self.pot = 0 # initialize reward pot
-        self.current_player = 0 # player 1 begins the game
+        self.current_player = np.random.choice([0, 1])  
         self.done = False
         self.winner = None 
         return self.get_state()
 
     def get_state(self):
-        return (self.pot, self.current_player, tuple(self.player0_cards), tuple(self.player1_cards)) # TODO: Should both players be visible?
+        return (self.pot, self.current_player, tuple(self.player0_cards), tuple(self.player1_cards)) 
 
-    
     def step(self, action, bet_amt=100):
         if self.done:
             raise ValueError('Game over. Call reset()')
+        
+        self.turns += 1
    
         if action == 'bet': 
             self.pot += bet_amt # TODO: Play with the bet amt and see how things change
@@ -30,7 +34,12 @@ class SimpleGame:
         elif action == 'fold':
             self.done = True 
             self.current_player = (self.current_player + 1) % 2
-            self.winner = self.current_player 
+            if self.pot != 0:
+                self.winner = self.current_player 
+            
+        if self.turns >= self.max_turns:
+            self.done = True
+            self.determine_winner()
 
         return self.get_state(), self.done, self.winner 
     
@@ -40,7 +49,13 @@ class SimpleGame:
         elif max(self.player0_cards) < max(self.player1_cards):
             self.winner = 1
         else:
-            self.winner = 0 # Tie — probably play again in this case.
+            self.winner = None # Tie — probably play again in this case.
+
+    def get_opponent_action(self):
+        if self.opponent_strategy == 'raise':
+            return 'bet'
+        else:
+            return np.random.choice(['bet', 'fold'])
 
 
 def simulate_random_games(num_games):
@@ -50,8 +65,11 @@ def simulate_random_games(num_games):
         state = game.reset()
         done = False
         while not done:
-            action = np.random.choice(['bet', 'fold'])
-            bet_amt = np.random.randint(1, 11) if action == 'bet' else 0
+            if state[1] == 0: # This is equal to self.current_player
+                action = np.random.choice(['bet', 'fold'])
+            elif state[1] == 1:
+                action = game.get_opponent_action()
+            bet_amt = 100 if action == 'bet' else 0
             try:
                 state, done, winner = game.step(action, bet_amt)
             except ValueError:
