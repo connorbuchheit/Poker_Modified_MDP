@@ -3,7 +3,7 @@ from collections import defaultdict
 from simple_game import SimpleGame
 
 class RLAgent:
-    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
+    def __init__(self, alpha=0.1, gamma=1, epsilon=0.1):
         self.Q = defaultdict(lambda: np.zeros(2))  # q table
         self.alpha = alpha  # learning rate — tune hyperparams
         self.gamma = gamma  # discount factor 
@@ -13,7 +13,6 @@ class RLAgent:
         if np.random.rand() < self.epsilon:  # exploration
             return np.random.choice([0, 1])  
         else:  # exploitation 
-            print(state)
             return np.argmax(self.Q[state])  
 
     def update(self, state, action, reward, next_state, done):
@@ -22,54 +21,58 @@ class RLAgent:
         td_error = td_target - self.Q[state][action]
         self.Q[state][action] += self.alpha * td_error
 
-def train_q_learning(num_episodes=100000):
+def train_q_learning(num_episodes=1000000):
     agent = RLAgent()
-    game = SimpleGame()
+    game = SimpleGame(opponent_strat='raise')  # Train against a specific strategy
 
     for _ in range(num_episodes):
-        state = game.reset()  
+        state = game.reset()
         done = False
         while not done:
             action = agent.choose_action(state)
             action_name = 'fold' if action == 0 else 'bet'
             bet_amt = 100 if action_name == 'bet' else 0
 
-            next_state, done, winner = game.step(action_name, bet_amt)
-            if action_name == 'fold':
-                if game.pot == 0:
-                    reward = -10
-                else:
-                    reward = -1 * bet_amt  # Penalize folding slightly
-            else:
-                reward = game.pot if winner == game.current_player else -100
+            next_state, done, winner = game.step(action_name)
 
+            # Calculate reward
+            if done and winner == 0:  # Player 0 wins
+                reward = game.pot
+            elif done and winner == 1:  # Player 1 wins
+                reward = -game.pot
+            elif done and winner is None:  # Tie
+                reward = 0
+            elif action_name == 'fold':
+                reward = -10 - game.pot  # Stronger penalty for folding
+            else:
+                reward = 0  # Neutral reward for ongoing action
+
+            # Update Q-table
             agent.update(state, action, reward, next_state, done)
             state = next_state
 
     return agent
+
 
 # train
 agent = train_q_learning()
 
 # evaluate policy
 def evaluate_policy(agent, num_games=1000):
-    game = SimpleGame()
-    wins = [0, 0]
+    game = SimpleGame(opponent_strat='raise')  # Test against the same strategy
+    wins = [0, 0, 0]
     for _ in range(num_games):
         state = game.reset()
         done = False
         while not done:
             action = agent.choose_action(state)
             action_name = 'fold' if action == 0 else 'bet'
-            bet_amt = 100
+            bet_amt = 100 if action_name == 'bet' else 0
             state, done, winner = game.step(action_name, bet_amt)
-            if action_name == 'fold':
-                reward = -bet_amt  # Penalize folding slightly
-            else:
-                reward = game.pot if winner == game.current_player else -100
-        if winner is not None:
-            wins[winner] += 1
+
+        wins[winner] += 1
     return wins
+
 
 results = evaluate_policy(agent)
 print(f"Player 0 wins: {results[0]}, Player 1 wins: {results[1]}")
