@@ -1,12 +1,12 @@
 import random
 
 class TexasHoldEm:
-    def __init__(self, num_players=2, starting_stack=1000):
+    def __init__(self, num_players=3, starting_stack=1000):
         self.deck = [(rank, suit) for rank in range(1, 14) for suit in 'ABCD']
         self.players = [{'id': i, 'hole_cards': [], 'stack': starting_stack, 'current_bet': 0, 'active': True} for i in range(num_players)]
         self.community_cards = []
+        self.current_bet = 50
         self.pot = 0
-        self.current_bet = 0
 
     def shuffle_deck(self):
         random.shuffle(self.deck)
@@ -14,6 +14,7 @@ class TexasHoldEm:
     def deal_hole_cards(self):
         for player in self.players:
             player['hole_cards'] = [self.deck.pop(), self.deck.pop()]
+            print(f"Player {player['id']}'s cards: {player['hole_cards']}")
     
     def deal_community_cards(self, num_cards=5): # Deal three cards
         for _ in range(num_cards):
@@ -30,23 +31,29 @@ class TexasHoldEm:
 
         for player in self.players:
             if player['active']:
+                self.pot += self.current_bet # may not work
+                player['stack'] -= self.current_bet
                 print(f"Player {player['id']}'s stack: {player['stack']}")
-                action = # TODO 
+                action = random.choice(['fold', 'call', 'raise']) # TODO — Fix different action
                 if action == 'fold':
                     player['active'] = False 
+                    print(f"Player {player['id']} folds")
                 elif action == 'call':
                     call_amount = self.current_bet - player['current_bet']
-                    call_amount = min(call_amount, player['stack]']) # handle case where we have to go all in
-                    player['stack'] -= call_amount 
-                    player['current_bet'] += call_amount 
-                    self.pot += call_amount 
+                    call_amount = min(call_amount, player['stack'])  # Handle "all-in" cases
+                    player['stack'] -= call_amount
+                    player['current_bet'] += call_amount
+                    print(f"Player {player['id']} bets {call_amount}")
+                    self.pot += call_amount
                 elif action == 'raise':
-                    raise_amount = # TODO: Implement strategy on how to raise for players
-                    total_bet = self.current_bet + raise_amount
-                    player['stack'] -= total_bet
-                    player['current_bet'] += total_bet
-                    self.pot += total_bet
-                    self.current_bet = total_bet
+                    raise_amount = 100  
+                    difference = (self.current_bet + raise_amount) - player['current_bet']
+                    print(f"Player {player['id']} raises {difference}")
+                    difference = min(difference, player['stack'])  # Handle "all-in" cases
+                    player['stack'] -= difference
+                    player['current_bet'] += difference
+                    self.pot += difference
+                    self.current_bet += raise_amount
 
     def determine_winner(self):
         active_players = [p for p in self.players if p['active']]
@@ -89,3 +96,7 @@ class TexasHoldEm:
 
         # Showdown
         self.determine_winner()
+
+if __name__ == "__main__":
+    game = TexasHoldEm()
+    game.play_hand()
