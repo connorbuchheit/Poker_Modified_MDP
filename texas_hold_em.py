@@ -37,32 +37,11 @@ class TexasHoldEm:
                 elif action == 'call':
                     call_amount = self.current_bet - player['current_bet']
                     call_amount = min(call_amount, player['stack]']) # handle case where we have to go all in
-                    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                if action == 'fold':
-                    player['active'] = False
-                elif action == 'call':
-                    call_amount = self.current_bet - player['current_bet']
-                    call_amount = min(call_amount, player['stack'])  # Handle all-in
-                    player['stack'] -= call_amount
-                    player['current_bet'] += call_amount
-                    self.pot += call_amount
-                elif action.startswith('raise'):
-                    raise_amount = int(action.split()[1])
+                    player['stack'] -= call_amount 
+                    player['current_bet'] += call_amount 
+                    self.pot += call_amount 
+                elif action == 'raise':
+                    raise_amount = # TODO
                     total_bet = self.current_bet + raise_amount
                     player['stack'] -= total_bet
                     player['current_bet'] += total_bet
