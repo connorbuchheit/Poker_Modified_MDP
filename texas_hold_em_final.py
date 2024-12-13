@@ -1,3 +1,35 @@
+import random
+
+class Card:
+    """Represents a single card with a rank, ignoring suits."""
+    
+    def __init__(self, rank):
+        self.rank = rank
+
+    def __repr__(self):
+        return f"{self.rank}"
+
+    def __lt__(self, other):
+        return self.rank < other.rank
+    
+    def __eq__(self, other):
+        return self.rank == other.rank
+
+class Deck:
+    """Represents a deck of 52 cards with ranks from 1 to 13 (ignoring suits)."""
+    
+    def __init__(self):
+        self.cards = [Card(rank) for rank in range(1, 14)] * 4  # 4 suits, but suits are ignored
+        random.shuffle(self.cards)
+    
+    def deal(self, num_cards):
+        return [self.cards.pop() for _ in range(num_cards)]
+    
+    def reset(self):
+        """Reshuffle the deck."""
+        self.cards = [Card(rank) for rank in range(1, 14)] * 4  # 4 suits, but suits are ignored
+        random.shuffle(self.cards)
+
 class PokerGame:
     """Represents the poker game between two players A and B."""
 
