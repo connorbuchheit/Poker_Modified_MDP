@@ -1,9 +1,10 @@
 import random
+from collections import Counter
 # This implementation is what we are using for the neural network due to its greater complexity. 
 # Different design choices scale this up from the other version for Q-Learning.
 class TexasHoldEm:
     def __init__(self, num_players=3, starting_stack=1000):
-        self.deck = [(rank, suit) for rank in range(1, 14) for suit in 'ABCD']
+        self.deck = [rank for rank in range(1, 14)] * 4
         self.players = [{'id': i, 'hole_cards': [], 'stack': starting_stack, 'current_bet': 0, 'active': True} for i in range(num_players)]
         self.community_cards = []
         self.current_bet = 100
@@ -33,7 +34,7 @@ class TexasHoldEm:
         for idx, player in enumerate(self.players):
             if player['active']:
                 # print(f"Player {player['id']}'s stack: {player['stack']}")
-                action = random.choice(['fold', 'call', 'raise']) # TODO — Fix different action
+                action = random.choice(['call', 'raise']) # TODO — Fix different action
                 if action == 'fold':
                     self.players[idx]['active'] = False 
                     print(f"Player {player['id']} folds")
@@ -58,7 +59,6 @@ class TexasHoldEm:
                     self.current_bet += raise_amount
                     print(f"Current bet: {self.current_bet}")
                     
-
     def determine_winner(self):
         active_players = [p for p in self.players if p['active']]
         if not active_players:
@@ -66,13 +66,34 @@ class TexasHoldEm:
             return None
 
         def hand_strength(player):
-            hole_cards = player['hole_cards']
-            return max(card[0] for card in hole_cards)
+            full_hand = player['hole_cards'] + self.community_cards
+            counts = Counter(full_hand)  # Count triples, pairs, etc
+            triples = [card for card, count in counts.items() if count == 3]
+            pairs = [card for card, count in counts.items() if count == 2]
+            singles = [card for card, count in counts.items() if count == 1]
 
-        winner = max(active_players, key=hand_strength)
-        print(f"Player {winner['id']} wins the pot of {self.pot} chips!")
-        winner['stack'] += self.pot
-        return winner['id'] # TODO: Maybe modify to handle different winning hands.
+            # sort so if there is a tie the rank wins
+            triples.sort(reverse=True)
+            pairs.sort(reverse=True)
+            singles.sort(reverse=True)
+
+            if triples:
+                return (3, triples[0])  # Priority 3: Three of a kind, return highest suit with all.
+            elif len(pairs) >= 2:
+                return (2, pairs[0])      # Priority 2: Two pairs
+            elif pairs:
+                return (1, pairs[0])         # Priority 1: One pair
+            else:
+                return (0, singles[0])                # Priority 0: High card
+            
+        player_scores = [(player['id'], hand_strength(player)) for player in active_players]
+
+        winner = max(player_scores, key=lambda x: (x[1][0], x[1][1], random.random())) # Random value added in fringe case of tie. No splititng pot.
+
+        winning_player = next(p for p in self.players if p['id'] == winner[0])
+        print(f"Player {winning_player['id']} wins the pot of {self.pot} chips!")
+        winning_player['stack'] += self.pot
+        return winning_player['id'] # TODO: Maybe modify to handle different winning hands.
 
     def play_hand(self):
         self.shuffle_deck()
