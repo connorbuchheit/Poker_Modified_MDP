@@ -21,9 +21,9 @@ class RLAgent:
         td_error = td_target - self.Q[state][action]
         self.Q[state][action] += self.alpha * td_error
 
-def train_q_learning(num_episodes=1000000):
+def train_q_learning(num_episodes=1000000, opp_policy='conservative'):
     agent = RLAgent()
-    game = SimpleGame()  # Train against a specific strategy
+    game = SimpleGame(opp_policy=opp_policy)  # Train against a specific strategy
 
     for _ in range(num_episodes):
         state = game.reset()
@@ -51,12 +51,8 @@ def train_q_learning(num_episodes=1000000):
 
     return agent
 
-
-# train
-agent = train_q_learning()
-
-def evaluate_policy(agent, num_games=1000):
-    game = SimpleGame()  # Test against the same strategy
+def evaluate_policy(agent, opp_policy='conservative', num_games=1000):
+    game = SimpleGame(opp_policy=opp_policy)  # Test against the same strategy
     wins = [0, 0, 0]
     total_profit = 0  # Track total profit/loss for Player 0
 
@@ -83,7 +79,17 @@ def evaluate_policy(agent, num_games=1000):
     average_profit = total_profit / num_games
     return wins, average_profit
 
+# Training loop across policies
+agent = train_q_learning()
+n_train = 1000000
+n_eval = 1000000
 
-results, avg_profit = evaluate_policy(agent)
-print(f"Player 0 wins: {results[0]}, Player 1 wins: {results[1]}")
-print(f"Average profit/loss for Player 0: {avg_profit}")
+for policy in ['random', 'always_call', 'conservative']:
+    # Train and evaluate Q learning for poicy
+    agent = train_q_learning(num_episodes=n_train, opp_policy=policy)
+    q_learning_results, q_learning_avg_profit = evaluate_policy(agent, opp_policy=policy, num_games=n_eval)
+    
+    print(f"Against Player B Strategy: {policy}")
+    print(f"Q-Learning Strategy Results: {q_learning_results}")
+    print(f"Average Profit for Player A: {q_learning_avg_profit:.2f}")
+    print()

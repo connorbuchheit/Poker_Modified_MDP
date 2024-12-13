@@ -1,8 +1,9 @@
 import numpy as np
 
 class SimpleGame:
-    def __init__(self):
+    def __init__(self, opp_policy='conservative'):
         self.reset()
+        self.opp_policy='conservative'
 
     def reset(self):
         self.deck = list(range(1,14)) * 4 # cards from 1-13 
@@ -22,38 +23,29 @@ class SimpleGame:
     def max_card(self):
         return max(self.player0_cards) # not showing player 1's cards 
 
-    # def step(self, action, bet_amt=100):
-    #     if self.done:
-    #         raise ValueError('Game over. Call reset()')
-   
-    #     if action == 'bet': 
-    #         self.pot += bet_amt # TODO: Play with the bet amt and see how things change
-    #         self.current_player = (self.current_player + 1) % 2 # should appropriately update
-    #     elif action == 'fold':
-    #         self.done = True 
-    #         self.current_player = (self.current_player + 1) % 2
-    #         if self.pot != 0:
-    #             self.winner = self.current_player 
-    #         else:
-    #             self.winner = 2 # Tie
-            
-    #     if self.turns >= self.max_turns:
-    #         self.done = True
-    #         self.determine_winner()
-
-    #     return self.max_card(), self.done, self.winner, self.current_player
-
     def step(self, action_a, bet_amt=100):
         if self.done:
             raise ValueError("Game over. Call reset().")
+        
+        # off the bat, determine player 1 action
+        if self.opp_policy == 'conservative':
+            if action_a == 'raise':
+                self.player1_response = "call" if max(self.player1_cards) >= 8 else "fold"
+            else:
+                self.player1_response = "call"
+        elif self.opp_policy == 'random':
+            self.player1_response = np.random.choice(['call', 'fold'])
+        elif self.opp_policy == 'always_call':
+            self.player1_response = 'call'
+        else:
+            raise ValueError('invalid strategy for b')
 
         # player 0 action
         if action_a == "raise":
             self.pot += bet_amt
             self.bet_a += bet_amt
-            self.player1_response = "call" if max(self.player1_cards) >= 8 else "fold"
         elif action_a == "check":
-            self.player1_response = "call"
+            pass
         else:
             raise ValueError('invalid action for a. ')
 
@@ -70,8 +62,6 @@ class SimpleGame:
             self.done = True
             self.winner = 0  # player a wins if player b folds
             return self.max_card(), self.done, self.winner
-
-
     
     def determine_winner(self):
         if max(self.player0_cards) > max(self.player1_cards):
@@ -82,11 +72,11 @@ class SimpleGame:
             self.winner = 2 # Tie 
 
 
-def simulate_games(num_games):
+def simulate_games(num_games, opp_policy):
     results = {'Player 0 wins': 0, 'Player 1 wins': 0, 'Ties': 0}
     total_profit = 0 # for player a, keeping track of profit
     for _ in range(num_games):
-        game = SimpleGame()  
+        game = SimpleGame(opp_policy=opp_policy)  
         game.reset()
         done = False
 
@@ -120,6 +110,13 @@ def simulate_games(num_games):
 
 # Run n simulations
 n = 100000
-results, avg_profit = simulate_games(n) # with a random strategy
-# print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
-print(f"Avg profit for a w random strat: {avg_profit}")
+# results, avg_profit = simulate_games(n) # with a random strategy
+# # print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
+# print(f"Avg profit for a w random strat: {avg_profit}")
+
+for policy in ['random', 'always_call', 'conservative']:
+    results, avg_profit = simulate_games(n, opp_policy=policy)
+    print(f"Player B Strategy: {policy}")
+    print(f"Results: {results}")
+    print(f"Avg Profit for Player A: {avg_profit:.2f}")
+    print()

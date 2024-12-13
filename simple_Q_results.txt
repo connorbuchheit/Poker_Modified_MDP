@@ -1,0 +1,23 @@
+Player B Strategy: random
+Results: {'Player 0 wins': 48.326, 'Player 1 wins': 44.334, 'Ties': 7.340000000000001}
+Avg Profit for Player A: -6.36
+
+Player B Strategy: always_call
+Results: {'Player 0 wins': 48.278999999999996, 'Player 1 wins': 44.451, 'Ties': 7.2700000000000005}
+Avg Profit for Player A: -6.61
+
+Player B Strategy: conservative
+Results: {'Player 0 wins': 47.77, 'Player 1 wins': 44.767, 'Ties': 7.463}
+Avg Profit for Player A: -7.89
+
+Against Player B Strategy: random
+Q-Learning Strategy Results: [462254, 459174, 78572]
+Average Profit for Player A: 10.75
+
+Against Player B Strategy: always_call
+Q-Learning Strategy Results: [463326, 457833, 78841]
+Average Profit for Player A: 7.41
+
+Against Player B Strategy: conservative
+Q-Learning Strategy Results: [463010, 458897, 78093]
+Average Profit for Player A: 10.81
