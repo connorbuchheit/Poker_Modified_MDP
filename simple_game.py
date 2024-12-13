@@ -81,31 +81,45 @@ class SimpleGame:
         else:
             self.winner = 2 # Tie 
 
-    def get_opponent_action(self):
-        if self.opponent_strategy == 'raise':
-            return 'bet'
-        else:
-            return np.random.choice(['bet', 'fold'])
 
-
-def simulate_random_games(num_games):
-    results = []
+def simulate_games(num_games):
+    results = {'Player 0 wins': 0, 'Player 1 wins': 0, 'Ties': 0}
+    total_profit = 0 # for player a, keeping track of profit
     for _ in range(num_games):
-        game = SimpleGame()
-        pot, player, p0_cards = game.reset()
+        game = SimpleGame()  
+        game.reset()
         done = False
+
         while not done:
-            if player == 0: # This is equal to self.current_player
-                action = np.random.choice(['bet', 'fold'])
-            elif player == 1:
-                action = game.get_opponent_action()
-            bet_amt = 100 if action == 'bet' else 0
-            state, done, winner, player = game.step(action, bet_amt)
-        results.append(winner)
-    return results
+            action_a = np.random.choice(['raise', 'check'])
+            _, done, winner = game.step(action_a) # game with random action from a
+
+        if winner == 0:  # Player A wins
+            profit_a = game.pot - game.bet_a 
+        elif winner == 1: # Player B wins 
+            profit_a = -game.bet_a  
+        else:  # Tie
+            profit_a = (game.pot / 2) - game.bet_a  
+
+        total_profit += profit_a
+
+        # Update results based on the winner
+        if winner == 0:
+            results['Player 0 wins'] += 1
+        elif winner == 1:
+            results['Player 1 wins'] += 1
+        elif winner == 2:
+            results['Ties'] += 1
+
+    # Normalize results to percentages
+    for key in results:
+        results[key] = (results[key] / num_games) * 100
+    average_profit_a = total_profit / num_games
+
+    return results, average_profit_a
 
 # Run n simulations
 n = 100000
-results = simulate_random_games(n)
-print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
-print(f"Ties: {results.count(2) / n}%")
+results, avg_profit = simulate_games(n) # with a random strategy
+# print(f"Player 0 wins: {results.count(0) / n}%, Player 1 wins: {results.count(1) / n}%")
+print(f"Avg profit for a w random strat: {avg_profit}")
