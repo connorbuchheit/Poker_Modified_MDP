@@ -93,7 +93,7 @@ def update(table_probabilities,
             if table_probabilities.loc['B (raised)', [pair_B]].iloc[0] > 0 + eta - eps_error:
                 table_prob_new.loc['B (raised)', [pair_B]] -= eta
 
-    table_prob_new = table_prob_new.round(1)
+    table_prob_new = (table_prob_new / eta).round() * eta
     
     print(table_prob_new)
     print(f"Iter {num_iter} completed.")

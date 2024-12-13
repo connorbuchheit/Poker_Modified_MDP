@@ -81,13 +81,16 @@ df_probabilities = pd.DataFrame(0.5,
 # if A did not raise, B should always play
 df_probabilities.loc['B (not raised)'] = 1
 
-eta = 0.1
+eta = 0.02
+episodes = 1000
 
-for i in range(100):
+for i in range(5000):
     df_probabilities = update(df_probabilities,
                               eta,
                               all_pairs,
                               opp_probs,
                               i)
+    if i % 100 == 0:
+        df_probabilities.to_csv(f'data/opt_probs_iter_{i}.csv')
 
 print(df_probabilities)
