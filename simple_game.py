@@ -11,10 +11,13 @@ class SimpleGame:
 
         self.player0_cards = [self.deck.pop(), self.deck.pop()] # deal two cars each
         self.player1_cards = [self.deck.pop(), self.deck.pop()] # I say player 0 and player 1 for easier boolean logic in simple case
-        self.pot = 0 # initialize reward pot
+        self.bet_a = 100 # initialize reward pot — costs 100 per player to play
+        self.bet_b = 100
+        self.pot = 200
         self.current_player = 0
         self.done = False
         self.winner = None 
+        self.player1_response = None
         return self.max_card()
 
     def max_card(self):
@@ -41,25 +44,35 @@ class SimpleGame:
 
     #     return self.max_card(), self.done, self.winner, self.current_player
 
-    def step(self, action, bet_amt=100):
+    def step(self, action_a, bet_amt=100):
         if self.done:
             raise ValueError("Game over. Call reset().")
 
-        if action == "bet": 
+        # player 0 action
+        if action_a == "raise":
             self.pot += bet_amt
-        elif action == "fold":
+            self.bet_a += bet_amt
+            self.player1_response = "call" if max(self.player1_cards) >= 8 else "fold"
+        elif action_a == "check":
+            self.player1_response = "call"
+
+        # player b action
+        if self.player1_response == "call":
+            if action_a == "raise":
+                self.pot += bet_amt
+                self.bet_b += bet_amt
             self.done = True
-            self.winner = 2  # Tie if we fold.
+            self.determine_winner()
             return self.max_card(), self.done, self.winner
 
-        # Opponent always raises
-        self.pot += bet_amt
+        elif self.player1_response == "fold":
+            self.done = True
+            self.winner = 0  # player a wins if player b folds
+            return self.max_card(), self.done, self.winner
 
-        # End game and determine winner
-        self.done = True
-        self.determine_winner()
-
+        # return
         return self.max_card(), self.done, self.winner
+
     
     def determine_winner(self):
         if max(self.player0_cards) > max(self.player1_cards):

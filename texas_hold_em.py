@@ -15,8 +15,8 @@ class TexasHoldEm:
         for player in self.players:
             player['hole_cards'] = [self.deck.pop(), self.deck.pop()]
     
-    def deal_community_cards(self): # Deal three cards
-        for _ in range(3):
+    def deal_community_cards(self, num_cards=5): # Deal three cards
+        for _ in range(num_cards):
             self.community_cards.append(self.deck.pop())
 
     def reset_bets(self):
@@ -41,15 +41,12 @@ class TexasHoldEm:
                     player['current_bet'] += call_amount 
                     self.pot += call_amount 
                 elif action == 'raise':
-                    raise_amount = # TODO
+                    raise_amount = # TODO: Implement strategy on how to raise for players
                     total_bet = self.current_bet + raise_amount
                     player['stack'] -= total_bet
                     player['current_bet'] += total_bet
                     self.pot += total_bet
                     self.current_bet = total_bet
-                else:
-                    print("Invalid action. Try again.")
-                    self.betting_round()
 
     def determine_winner(self):
         active_players = [p for p in self.players if p['active']]
@@ -64,7 +61,7 @@ class TexasHoldEm:
         winner = max(active_players, key=hand_strength)
         print(f"Player {winner['id']} wins the pot of {self.pot} chips!")
         winner['stack'] += self.pot
-        return winner['id']
+        return winner['id'] # TODO: Maybe modify to handle different winning hands.
 
     def play_hand(self):
         self.shuffle_deck()
