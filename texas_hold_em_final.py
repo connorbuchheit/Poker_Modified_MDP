@@ -30,7 +30,7 @@ class Deck:
         self.cards = [Card(rank) for rank in range(1, 14)] * 4  # 4 suits, but suits are ignored
         random.shuffle(self.cards)
 
-class PokerGame:
+class HoldEm:
     """Represents the poker game between two players A and B."""
 
     def __init__(self):
@@ -64,43 +64,82 @@ class PokerGame:
             pass  # Do nothing if Player A checks (Player B's turn)
         
         # Now it's Player B's turn (following a fixed strategy)
+        self.simulate_b_action()
+
         result = self.simulate_game()
-        reward = result["reward"]
+        reward_a = result["reward_a"]
+        reward_b = result["reward_b"]
         done = result["done"]
-        return self.get_state(), reward, done
+        return {"reward_a": reward_a, "reward_b": reward_b, "done": done}
+
+    def simulate_b_action(self):
+        """Simulate Player B's action based on the fixed strategy."""
+        if self.player_a_bet == self.current_bet:  # Player A checked
+            return  # Player B always calls if Player A checks
+        
+        # If Player A raised, Player B will call if they have a high card K or higher or a pair
+        high_card_b = max(card.rank for card in self.player_b_hand)
+        has_pair = len(set(card.rank for card in self.player_b_hand)) < 2
+        
+        if high_card_b >= 1 or has_pair:  # Player B calls
+            if self.player_b_bet < self.current_bet:
+                difference = self.current_bet - self.player_b_bet
+                self.pot += difference
+                self.player_b_bet = self.current_bet
 
     def simulate_game(self):
         """Simulate the game after Player A's action and determine the result."""
-        # For simplicity, let's assume Player B always calls if Player A raises.
-        # We can implement Player B's strategy here.
         winner = self.determine_winner()
         if winner == "Player A":
-            reward = 1  # Player A wins
+            reward_a = self.pot  # Player A wins the full pot
+            reward_b = 0  # Player B loses
         elif winner == "Player B":
-            reward = 0  # Player B wins
-        else:
-            reward = 0  # Tie
+            reward_a = 0  # Player A loses
+            reward_b = self.pot  # Player B wins the full pot
+        else:  # Tie
+            reward_a = self.pot / 2  # Split the pot
+            reward_b = self.pot / 2  # Split the pot
         
         done = True  # The game ends after Player B's action
-        return {"reward": reward, "done": done}
+        return {"reward_a": reward_a, "reward_b": reward_b, "done": done}
+
 
     def determine_winner(self):
-        """Determine the winner based on the cards."""
-        # Simple comparison based on high card or pair
+        """Determine the winner based on pairs or high cards."""
+        # Evaluate Player A's and Player B's hands
         a_hand_eval = self.evaluate_hand(self.player_a_hand)
         b_hand_eval = self.evaluate_hand(self.player_b_hand)
-        if len(a_hand_eval["pairs"]) > len(b_hand_eval["pairs"]):
-            return "Player A"
-        elif len(b_hand_eval["pairs"]) > len(a_hand_eval["pairs"]):
-            return "Player B"
-        else:
-            if a_hand_eval["high_card"] > b_hand_eval["high_card"]:
+        
+        # Check if either player has a pair
+        a_has_pair = len(a_hand_eval["pairs"]) > 0
+        b_has_pair = len(b_hand_eval["pairs"]) > 0
+        
+        if a_has_pair and b_has_pair:
+            # If both have pairs, compare the highest pair
+            a_high_pair = max(a_hand_eval["pairs"])
+            b_high_pair = max(b_hand_eval["pairs"])
+            if a_high_pair > b_high_pair:
                 return "Player A"
-            elif b_hand_eval["high_card"] > a_hand_eval["high_card"]:
+            elif b_high_pair > a_high_pair:
                 return "Player B"
             else:
-                return "Tie"
+                return "Tie"  # Same highest pair, split the pot
 
+        elif a_has_pair:  # Only Player A has a pair
+            return "Player A"
+        elif b_has_pair:  # Only Player B has a pair
+            return "Player B"
+        else:
+            # If neither player has a pair, compare the highest cards
+            a_high_card = a_hand_eval["high_card"]
+            b_high_card = b_hand_eval["high_card"]
+            if a_high_card > b_high_card:
+                return "Player A"
+            elif b_high_card > a_high_card:
+                return "Player B"
+            else:
+                return "Tie"  # Same high card, split the pot
+    
     def evaluate_hand(self, hand):
         """Evaluate the hand strength (pairs and high card)."""
         full_hand = hand + self.community_cards
@@ -109,7 +148,7 @@ class PokerGame:
         pairs = [rank for rank, count in count_ranks.items() if count == 2]
         high_card = max(full_hand, key=lambda card: card.rank)
         return {"pairs": pairs, "high_card": high_card}
-    
+
     def get_state(self):
         """Return the current state as a tuple of Player A's hand, community cards, and bet."""
         return tuple([card.rank for card in self.player_a_hand] +
