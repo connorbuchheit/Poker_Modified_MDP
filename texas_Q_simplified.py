@@ -32,13 +32,9 @@ class QLearningAgent:
 
     def get_state(self, game):
         """Convert the current game state into a state representation."""
-        pair = False
-        total_cards = game.player_a_hand + game.community_cards
-        if len(set(card.rank for card in total_cards)) < 5:
-            pair = True
-
-        return tuple([pair] +
-                     [max([card.rank for card in game.community_cards])])
+        return tuple([card.rank for card in game.player_a_hand] + 
+                     [card.rank for card in game.community_cards] + 
+                     [game.player_a_bet])
     
     def train(self, game, episodes=1000):
         """Train the agent over a number of episodes."""
@@ -86,7 +82,7 @@ def test_agent(agent, games=1000):
             agent.update_q_table(state, action, reward_a, next_state)
             
             # Player A's profit is their reward minus their bet
-            total_profit += reward_a
+            total_profit += reward_a - game.player_a_bet
 
     # Calculate average profit after all games
     average_profit = total_profit / games
@@ -95,7 +91,7 @@ def test_agent(agent, games=1000):
 # Train agent A
 agent_a = QLearningAgent(action_space=["check", "raise"], state_space="state_space")
 game = HoldEm()
-agent_a.train(game, episodes=100000)
+agent_a.train(game, episodes=1000000)
 
 # Test agent A against fixed strategy (Player B)
 test_agent(agent_a, games=1000)

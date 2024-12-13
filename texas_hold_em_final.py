@@ -77,9 +77,11 @@ class HoldEm:
         if self.player_a_bet == self.current_bet:  # Player A checked
             return  # Player B always calls if Player A checks
         
+        total_cards_b = [self.player_b_hand] + [self.community_cards]
+        
         # If Player A raised, Player B will call if they have a high card K or higher or a pair
-        high_card_b = max(card.rank for card in self.player_b_hand)
-        has_pair = len(set(card.rank for card in self.player_b_hand)) < 2
+        high_card_b = max(card.rank for card in total_cards_b)
+        has_pair = len(set(card.rank for card in total_cards_b)) < 5
         
         if high_card_b >= 1 or has_pair:  # Player B calls
             if self.player_b_bet < self.current_bet:
@@ -101,6 +103,9 @@ class HoldEm:
             reward_b = self.pot / 2  # Split the pot
         
         done = True  # The game ends after Player B's action
+        reward_a = reward_a - self.player_a_bet
+        reward_b = reward_b - self.player_b_bet
+        
         return {"reward_a": reward_a, "reward_b": reward_b, "done": done}
 
 
