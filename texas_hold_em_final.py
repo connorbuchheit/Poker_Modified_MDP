@@ -64,34 +64,54 @@ class HoldEm:
             pass  # Do nothing if Player A checks (Player B's turn)
         
         # Now it's Player B's turn (following a fixed strategy)
-        self.simulate_b_action()
+        b_action = self.simulate_b_action()
 
-        result = self.simulate_game()
+        result = self.simulate_game(b_action)
         reward_a = result["reward_a"]
         reward_b = result["reward_b"]
         done = result["done"]
+        print(self.player_a_hand)
+        print(self.player_b_hand)
+        print(self.community_cards)
+        print(action)
+        print(b_action)
+        print(reward_a)
+
         return {"reward_a": reward_a, "reward_b": reward_b, "done": done}
 
     def simulate_b_action(self):
         """Simulate Player B's action based on the fixed strategy."""
-        if self.player_a_bet == self.current_bet:  # Player A checked
-            return  # Player B always calls if Player A checks
         
-        total_cards_b = [self.player_b_hand] + [self.community_cards]
+        if self.player_a_bet == 100:  # Player A checked
+            return "call"
+        
+        # return 'fold'
+        
+        total_cards_b = self.player_b_hand + self.community_cards
         
         # If Player A raised, Player B will call if they have a high card K or higher or a pair
         high_card_b = max(card.rank for card in total_cards_b)
         has_pair = len(set(card.rank for card in total_cards_b)) < 5
         
-        if high_card_b >= 1 or has_pair:  # Player B calls
+        if high_card_b >= 13 or has_pair:  # Player B calls
             if self.player_b_bet < self.current_bet:
                 difference = self.current_bet - self.player_b_bet
                 self.pot += difference
                 self.player_b_bet = self.current_bet
 
-    def simulate_game(self):
+            return "call"
+        
+        return "fold"
+        
+
+    def simulate_game(self, b_action):
         """Simulate the game after Player A's action and determine the result."""
-        winner = self.determine_winner()
+        if b_action == 'call':
+            winner = self.determine_winner()
+        else:
+            winner = "Player A"
+        reward_a = 0
+        reward_b = 0
         if winner == "Player A":
             reward_a = self.pot  # Player A wins the full pot
             reward_b = 0  # Player B loses
@@ -103,8 +123,10 @@ class HoldEm:
             reward_b = self.pot / 2  # Split the pot
         
         done = True  # The game ends after Player B's action
+        # print("Pot:", self.pot)
         reward_a = reward_a - self.player_a_bet
         reward_b = reward_b - self.player_b_bet
+        # print(reward_a)
         
         return {"reward_a": reward_a, "reward_b": reward_b, "done": done}
 
@@ -154,9 +176,9 @@ class HoldEm:
         high_card = max(full_hand, key=lambda card: card.rank)
         return {"pairs": pairs, "high_card": high_card}
 
-    def get_state(self):
-        """Return the current state as a tuple of Player A's hand, community cards, and bet."""
-        return tuple([card.rank for card in self.player_a_hand] +
-                     [card.rank for card in self.community_cards] +
-                     [self.player_a_bet])
+    # def get_state(self):
+    #     """Return the current state as a tuple of Player A's hand, community cards, and bet."""
+    #     return tuple([card.rank for card in self.player_a_hand] +
+    #                  [card.rank for card in self.community_cards] +
+    #                  [self.player_a_bet])
 

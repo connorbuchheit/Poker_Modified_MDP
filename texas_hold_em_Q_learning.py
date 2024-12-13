@@ -14,9 +14,14 @@ class QLearningAgent:
         if random.uniform(0, 1) < self.epsilon:
             return random.choice(self.action_space)  # Explore: choose a random action
         else:
+            raise_flag = False
             if state not in self.q_table:
                 self.q_table[state] = {action: 0 for action in self.action_space}  # Initialize if not present
+                raise_flag = True
+            # print(self.q_table[state])
             # Exploit: choose the action with the highest Q-value for the current state
+            if raise_flag == True:
+                return 'raise'
             return max(self.q_table[state], key=self.q_table[state].get)
 
     def update_q_table(self, state, action, reward, next_state):
@@ -25,10 +30,13 @@ class QLearningAgent:
             self.q_table[state] = {action: 0 for action in self.action_space}
         if next_state not in self.q_table:
             self.q_table[next_state] = {action: 0 for action in self.action_space}
-
+        # print(reward)
         best_next_action = max(self.q_table[next_state], key=self.q_table[next_state].get)
         td_target = reward + self.gamma * self.q_table[next_state][best_next_action]
         self.q_table[state][action] += self.alpha * (td_target - self.q_table[state][action])
+
+        # print(state, action)
+        # print(self.q_table[state][action])
 
     def get_state(self, game):
         """Convert the current game state into a state representation."""
@@ -48,6 +56,7 @@ class QLearningAgent:
             done = False
             while not done:
                 state = self.get_state(game)
+                # print(state)
                 action = self.choose_action(state)  # Choose action using the epsilon-greedy policy
                 
                 # Take the action and observe the outcome
@@ -76,6 +85,8 @@ def test_agent(agent, games=1000):
             
             # Choose an action using the agent's policy (epsilon-greedy)
             action = agent.choose_action(state)
+            # action = 'raise'
+            # print(action)
             
             # Take action and receive the next state and reward from the environment
             result = game.take_action(action)
@@ -95,7 +106,7 @@ def test_agent(agent, games=1000):
 # Train agent A
 agent_a = QLearningAgent(action_space=["check", "raise"], state_space="state_space")
 game = HoldEm()
-agent_a.train(game, episodes=100000)
+agent_a.train(game, episodes=10000)
 
 # Test agent A against fixed strategy (Player B)
-test_agent(agent_a, games=1000)
+test_agent(agent_a, games=10000)
