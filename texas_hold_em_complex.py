@@ -1,11 +1,12 @@
 import random
-
+# This implementation is what we are using for the neural network due to its greater complexity. 
+# Different design choices scale this up from the other version for Q-Learning.
 class TexasHoldEm:
     def __init__(self, num_players=3, starting_stack=1000):
         self.deck = [(rank, suit) for rank in range(1, 14) for suit in 'ABCD']
         self.players = [{'id': i, 'hole_cards': [], 'stack': starting_stack, 'current_bet': 0, 'active': True} for i in range(num_players)]
         self.community_cards = []
-        self.current_bet = 50
+        self.current_bet = 100
         self.pot = 0
 
     def shuffle_deck(self):
@@ -16,7 +17,7 @@ class TexasHoldEm:
             player['hole_cards'] = [self.deck.pop(), self.deck.pop()]
             print(f"Player {player['id']}'s cards: {player['hole_cards']}")
     
-    def deal_community_cards(self, num_cards=5): # Deal three cards
+    def deal_community_cards(self, num_cards=5): # Deal three cards normally in actual implementation
         for _ in range(num_cards):
             self.community_cards.append(self.deck.pop())
 
@@ -29,31 +30,34 @@ class TexasHoldEm:
         if num_active <= 1:
             return
 
-        for player in self.players:
+        for idx, player in enumerate(self.players):
             if player['active']:
-                self.pot += self.current_bet # may not work
-                player['stack'] -= self.current_bet
-                print(f"Player {player['id']}'s stack: {player['stack']}")
+                # print(f"Player {player['id']}'s stack: {player['stack']}")
                 action = random.choice(['fold', 'call', 'raise']) # TODO — Fix different action
                 if action == 'fold':
-                    player['active'] = False 
+                    self.players[idx]['active'] = False 
                     print(f"Player {player['id']} folds")
+
                 elif action == 'call':
-                    call_amount = self.current_bet - player['current_bet']
-                    call_amount = min(call_amount, player['stack'])  # Handle "all-in" cases
-                    player['stack'] -= call_amount
-                    player['current_bet'] += call_amount
-                    print(f"Player {player['id']} bets {call_amount}")
+                    print(f"Player {player['id']} CALLING!")
+                    call_amount = self.current_bet - self.players[idx]['current_bet']
+                    call_amount = min(call_amount, self.players[idx]['stack']) # in case of all-in
+                    self.players[idx]['stack'] -= call_amount
+                    self.players[idx]['current_bet'] += call_amount
                     self.pot += call_amount
+                    print(f"Current bet: {self.current_bet}")
+
                 elif action == 'raise':
+                    print(f"Player {player['id']} RAISING!")
                     raise_amount = 100  
                     difference = (self.current_bet + raise_amount) - player['current_bet']
-                    print(f"Player {player['id']} raises {difference}")
-                    difference = min(difference, player['stack'])  # Handle "all-in" cases
+                    difference = min(difference, player['stack'])  
                     player['stack'] -= difference
                     player['current_bet'] += difference
                     self.pot += difference
                     self.current_bet += raise_amount
+                    print(f"Current bet: {self.current_bet}")
+                    
 
     def determine_winner(self):
         active_players = [p for p in self.players if p['active']]
@@ -76,26 +80,20 @@ class TexasHoldEm:
         print("Hole cards dealt.")
         self.betting_round()
 
-        # Flop
         self.deal_community_cards(3)
         print("Flop:", self.community_cards)
-        self.reset_bets()
         self.betting_round()
 
-        # Turn
         self.deal_community_cards(1)
         print("Turn:", self.community_cards)
-        self.reset_bets()
         self.betting_round()
 
-        # River
         self.deal_community_cards(1)
         print("River:", self.community_cards)
-        self.reset_bets()
         self.betting_round()
 
-        # Showdown
         self.determine_winner()
+        self.reset_bets()
 
 if __name__ == "__main__":
     game = TexasHoldEm()
