@@ -1,8 +1,7 @@
 import numpy as np
 
 class SimpleGame:
-    def __init__(self, opponent_strat='random'):
-        self.opponent_strategy = opponent_strat
+    def __init__(self):
         self.reset()
 
     def reset(self):
@@ -55,6 +54,8 @@ class SimpleGame:
             self.player1_response = "call" if max(self.player1_cards) >= 8 else "fold"
         elif action_a == "check":
             self.player1_response = "call"
+        else:
+            raise ValueError('invalid action for a. ')
 
         # player b action
         if self.player1_response == "call":
@@ -70,8 +71,6 @@ class SimpleGame:
             self.winner = 0  # player a wins if player b folds
             return self.max_card(), self.done, self.winner
 
-        # return
-        return self.max_card(), self.done, self.winner
 
     
     def determine_winner(self):
