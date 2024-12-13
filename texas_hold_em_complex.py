@@ -1,5 +1,8 @@
 import random
 from collections import Counter
+import numpy as np
+from deep_Q_learning import DQLAgent
+import numpy as np
 # This implementation is what we are using for the neural network due to its greater complexity. 
 # Different design choices scale this up from the other version for Q-Learning.
 class TexasHoldEm:
@@ -9,6 +12,8 @@ class TexasHoldEm:
         self.community_cards = []
         self.current_bet = 100
         self.pot = 0
+        self.agent = DQLAgent(3)
+        self.fixed_strategies = fixed_strategies = [None, 'random', 'always_call', 'conservative'] # give other players strategy
 
     def shuffle_deck(self):
         random.shuffle(self.deck)
@@ -33,8 +38,19 @@ class TexasHoldEm:
 
         for idx, player in enumerate(self.players):
             if player['active']:
-                # print(f"Player {player['id']}'s stack: {player['stack']}")
-                action = random.choice(['call', 'raise']) # TODO — Fix different action
+                # action = random.choice(['call', 'fold', 'raise])
+                if idx == 0:  # Player 0 is who we are optimizing for in the neural network that we are training
+                    action = self.agent.choose_action(self.get_state(0))
+                else:  # Fixed strategies for Players 1, 2, 3
+                    if self.fixed_strategies[idx] == 'random':
+                        action = random.choice(['call', 'raise', 'fold'])
+                    elif self.fixed_strategies[idx] == 'always_call':
+                        action = 'call'
+                    elif self.fixed_strategies[idx] == 'conservative':
+                        if player['stack'] > self.current_bet * 2:  # Example conservative logic
+                            action = 'call'
+                        else:
+                            action = 'fold'
                 if action == 'fold':
                     self.players[idx]['active'] = False 
                     print(f"Player {player['id']} folds")
@@ -93,6 +109,7 @@ class TexasHoldEm:
         winning_player = next(p for p in self.players if p['id'] == winner[0])
         print(f"Player {winning_player['id']} wins the pot of {self.pot} chips!")
         winning_player['stack'] += self.pot
+        self.pot = 0 # give pot to winner, set back to 0
         return winning_player['id'] # TODO: Maybe modify to handle different winning hands.
 
     def play_hand(self):
@@ -115,6 +132,39 @@ class TexasHoldEm:
 
         self.determine_winner()
         self.reset_bets()
+
+    def get_state(self, player_id):
+        """
+        Create a vectorized representation of the current game state for the given player.
+        """
+        player = self.players[player_id]
+        state = []
+
+        # Player's hole cards (2 cards)
+        state.extend(player['hole_cards'])
+
+        # Community cards (flop, turn, river; max 5 cards)
+        state.extend(self.community_cards + [0] * (5 - len(self.community_cards)))
+
+        # Player's stack size and current bet
+        state.append(player['stack'])
+        state.append(player['current_bet'])
+
+        # Opponent stacks and current bets
+        for other_player in self.players:
+            if other_player['id'] != player_id:
+                state.append(other_player['stack'])
+                state.append(other_player['current_bet'])
+
+        # Active status of all players
+        state.extend([1 if p['active'] else 0 for p in self.players])
+
+        # Current pot size and current bet
+        state.append(self.pot)
+        state.append(self.current_bet)
+
+        return np.array(state, dtype=np.float32)
+
 
 if __name__ == "__main__":
     game = TexasHoldEm()
