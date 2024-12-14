@@ -6,16 +6,17 @@ import numpy as np
 # This implementation is what we are using for the neural network due to its greater complexity. 
 # Different design choices scale this up from the other version for Q-Learning.
 class TexasHoldEm:
-    def __init__(self, num_players=3, starting_stack=1000):
+    def __init__(self, num_players=4, starting_stack=3000):
         self.deck = [rank for rank in range(1, 14)] * 4
         self.players = [{'id': i, 'hole_cards': [], 'stack': starting_stack, 'current_bet': 0, 'active': True} for i in range(num_players)]
         self.community_cards = []
         self.current_bet = 100
         self.pot = 0
-        self.agent = DQLAgent(3)
+        self.agent = DQLAgent(21, 3) # 21 states (checked), 3 actions, this ONLY works for four players
         self.fixed_strategies = fixed_strategies = [None, 'random', 'always_call', 'conservative'] # give other players strategy
 
     def shuffle_deck(self):
+        self.deck = [rank for rank in range(1, 14)] * 4
         random.shuffle(self.deck)
 
     def deal_hole_cards(self):
@@ -40,7 +41,9 @@ class TexasHoldEm:
             if player['active']:
                 # action = random.choice(['call', 'fold', 'raise])
                 if idx == 0:  # Player 0 is who we are optimizing for in the neural network that we are training
-                    action = self.agent.choose_action(self.get_state(0))
+                    state = self.get_state(0)
+                    action_idx = self.agent.choose_action(state)
+                    action = ['call', 'raise', 'fold'][action_idx]
                 else:  # Fixed strategies for Players 1, 2, 3
                     if self.fixed_strategies[idx] == 'random':
                         action = random.choice(['call', 'raise', 'fold'])
@@ -110,28 +113,94 @@ class TexasHoldEm:
         print(f"Player {winning_player['id']} wins the pot of {self.pot} chips!")
         winning_player['stack'] += self.pot
         self.pot = 0 # give pot to winner, set back to 0
-        return winning_player['id'] # TODO: Maybe modify to handle different winning hands.
-
+        return winning_player['id'] 
+    
+    def calculate_reward(self, player_id, winner_id):
+        player = self.players[player_id]
+        if winner_id == player_id:
+            # Player wins the pot
+            return self.pot
+        elif not player['active']:
+            # Player folded
+            return -player['current_bet']
+        else:
+            # Player lost at showdown
+            return -player['current_bet']
+    
     def play_hand(self):
         self.shuffle_deck()
+        self.community_cards = []  # Clear community cards
+        self.reset_bets()  # Reset player bets
         self.deal_hole_cards()
+
         print("Hole cards dealt.")
-        self.betting_round()
 
-        self.deal_community_cards(3)
-        print("Flop:", self.community_cards)
-        self.betting_round()
+        states, actions, rewards, next_states, dones = [], [], [], [], []
 
-        self.deal_community_cards(1)
-        print("Turn:", self.community_cards)
-        self.betting_round()
+        done = False
+        state = self.get_state(0)  # Initial state for Player 0
+        while not done:
+            action_idx = self.agent.choose_action(state)  # Choose action for Player 0
+            action = ['call', 'raise', 'fold'][action_idx]
+            actions.append(action_idx)
 
-        self.deal_community_cards(1)
-        print("River:", self.community_cards)
-        self.betting_round()
+            # Simulate a round of betting
+            self.betting_round()
 
-        self.determine_winner()
+            # Update the state and check if the hand is done
+            next_state = self.get_state(0)
+            next_states.append(next_state)
+
+            if len(self.community_cards) == 0:
+                self.deal_community_cards(3)
+                print("Flop:", self.community_cards)
+            elif len(self.community_cards) == 3:
+                self.deal_community_cards(1)
+                print("Turn:", self.community_cards)
+            elif len(self.community_cards) == 4:
+                self.deal_community_cards(1)
+                print("River:", self.community_cards)
+
+            # Check if the hand is done
+            if len(self.community_cards) == 5 or sum(p['active'] for p in self.players) == 1:
+                done = True
+                print("Final round.")
+                winner_id = self.determine_winner()
+                reward = self.calculate_reward(0, winner_id)
+            else:
+                reward = 0
+
+            states.append(state)
+            rewards.append(reward)
+            dones.append(done)
+            state = next_state
+
         self.reset_bets()
+        return states, actions, rewards, next_states, dones
+
+
+
+    # def play_hand(self): # Note — this was commented out as it did not have a done criterion
+    #     done = False
+    #     self.shuffle_deck()
+    #     self.deal_hole_cards()
+    #     print("Hole cards dealt.")
+    #     self.betting_round()
+
+    #     self.deal_community_cards(3)
+    #     print("Flop:", self.community_cards)
+    #     self.betting_round()
+
+    #     self.deal_community_cards(1)
+    #     print("Turn:", self.community_cards)
+    #     self.betting_round()
+
+    #     self.deal_community_cards(1)
+    #     print("River:", self.community_cards)
+    #     self.betting_round()
+
+    #     self.determine_winner()
+    #     self.reset_bets()
 
     def get_state(self, player_id):
         """
@@ -140,26 +209,26 @@ class TexasHoldEm:
         player = self.players[player_id]
         state = []
 
-        # Player's hole cards (2 cards)
+        # Include player hole cards
         state.extend(player['hole_cards'])
 
-        # Community cards (flop, turn, river; max 5 cards)
+        # Include community cards, pad them with 0s so there are always 5
         state.extend(self.community_cards + [0] * (5 - len(self.community_cards)))
 
-        # Player's stack size and current bet
+        # Include player stack size and current bet
         state.append(player['stack'])
         state.append(player['current_bet'])
 
-        # Opponent stacks and current bets
+        # Include the opponent stacks and bets. 
         for other_player in self.players:
             if other_player['id'] != player_id:
                 state.append(other_player['stack'])
                 state.append(other_player['current_bet'])
 
-        # Active status of all players
+        # Include who's active.
         state.extend([1 if p['active'] else 0 for p in self.players])
 
-        # Current pot size and current bet
+        # Include pot size and bet.
         state.append(self.pot)
         state.append(self.current_bet)
 
