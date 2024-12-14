@@ -6,22 +6,38 @@ import numpy as np
 import random
 
 # Deep Q Learning on the Texas Holdem 
-class NeuralNetwork(nn.Module): # Neural network architeture — arbitrary simple choices, CHANGE IF NEED BE!
+# class NeuralNetwork(nn.Module): # Neural network architeture — arbitrary simple choices, CHANGE IF NEED BE!
+#     def __init__(self, input_dim, output_dim):
+#         super(NeuralNetwork, self).__init__()
+#         self.layers = nn.Sequential(
+#             nn.Linear(input_dim, 128),
+#             nn.ReLU(),
+#             nn.Linear(128, 64),
+#             nn.ReLU(),
+#             nn.Linear(64, output_dim)
+#         )
+
+#     def forward(self, x):
+#         return self.layers(x)
+
+class NeuralNetwork(nn.Module):  
     def __init__(self, input_dim, output_dim):
         super(NeuralNetwork, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(input_dim, 128),
+            nn.BatchNorm1d(128),  # Batch Normalize in hopes of stabiility :.(
             nn.ReLU(),
-            nn.Linear(128, 64),
+            nn.Linear(128, 64), # Change architecture? Does not rlly help much.
+            nn.BatchNorm1d(64),  
             nn.ReLU(),
             nn.Linear(64, output_dim)
         )
 
     def forward(self, x):
-        return self.layers(x)
-    
+        return self.layers(x)    
+
 class DQLAgent:
-    def __init__(self, state_dim, action_dim, lr=0.001, gamma=1.0, epsilon=1.0, epsilon_decay=0.995, min_epsilon=0.1):
+    def __init__(self, state_dim, action_dim, lr=0.001, gamma=1.0, epsilon=1.0, epsilon_decay=0.999, min_epsilon=0.1):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.lr = lr
@@ -35,13 +51,14 @@ class DQLAgent:
         self.criterion = nn.MSELoss()
 
         self.replay_buffer = deque(maxlen=5000)
+        self.losses = []
 
     def choose_action(self, state):
         """
         Choose an action using an epsilon-greedy policy.
         """
         if np.random.random() < self.epsilon:
-            return np.random.choice([0, 1, 2])  # Exploration
+            return np.random.choice([0, 1])  # Exploration
         else:
             state_tensor = torch.FloatTensor(state).unsqueeze(0)  # Exploitation, choose w max Q
             q_values = self.model(state_tensor)  
@@ -51,10 +68,9 @@ class DQLAgent:
         """
         Train the Q-network using a single step of experience replay.
         """
-        # Add experience to the replay buffer
+        # Use buffer + draw upon it.
         self.replay_buffer.append((state, action, reward, next_state, done))
 
-        # Only train if enough samples are in the buffer
         if len(self.replay_buffer) < 64:
             return
 
@@ -68,7 +84,7 @@ class DQLAgent:
         next_states = torch.FloatTensor(next_states)
         dones = torch.FloatTensor(dones)
 
-        # Compute target Q-values
+        # COmpute Q
         q_next = self.model(next_states).detach().max(1)[0]  # Max Q-value for next state
         targets = rewards + self.gamma * q_next * (1 - dones)
 
@@ -77,6 +93,7 @@ class DQLAgent:
 
         # Compute loss
         loss = self.criterion(q_values, targets)
+        self.losses.append(loss.item())
 
         # Backpropagation
         self.optimizer.zero_grad()

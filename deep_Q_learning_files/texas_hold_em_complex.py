@@ -6,14 +6,14 @@ import numpy as np
 # This implementation is what we are using for the neural network due to its greater complexity. 
 # Different design choices scale this up from the other version for Q-Learning.
 class TexasHoldEm:
-    def __init__(self, num_players=4, starting_stack=3000):
+    def __init__(self, num_players=2, starting_stack=3000):
         self.deck = [rank for rank in range(1, 14)] * 4
-        self.players = [{'id': i, 'hole_cards': [], 'stack': starting_stack, 'current_bet': 0, 'active': True} for i in range(num_players)]
+        self.players = [{'id': i, 'hole_cards': [], 'stack': starting_stack, 'current_bet': 100, 'active': True} for i in range(num_players)]
         self.community_cards = []
         self.current_bet = 100
         self.pot = 0
-        self.agent = DQLAgent(21, 3) # 21 states (checked), 3 actions, this ONLY works for four players
-        self.fixed_strategies = fixed_strategies = [None, 'random', 'always_call', 'conservative'] # give other players strategy
+        self.agent = DQLAgent(10, 2) # 21 states (checked), 3 actions, this ONLY works for four players
+        self.fixed_strategies = fixed_strategies = [None, 'always_call'] # 'always_call', 'conservative'] # give other players strategy
 
     def shuffle_deck(self):
         self.deck = [rank for rank in range(1, 14)] * 4
@@ -30,12 +30,25 @@ class TexasHoldEm:
 
     def reset_bets(self):
         for player in self.players:
-            player['current_bet'] = 0
+            player['current_bet'] = 100
+
+    def reset(self):
+        starting_stack = 3000  # Starting stack for each player
+        self.players = [{'id': i, 'hole_cards': [], 'stack': starting_stack, 'current_bet': 100, 'active': True}
+                        for i in range(len(self.players))]
+        self.community_cards = []
+        self.pot = 0
+        self.current_bet = 100
+        self.shuffle_deck()  # Shuffle the deck
 
     def betting_round(self):
+        for player in self.players:
+            if player['stack'] <= 0:
+                player['active'] = False
+
         num_active = sum(player['active'] for player in self.players)
         if num_active <= 1:
-            return
+            return  # No betting round if 1 or fewer active players
 
         for idx, player in enumerate(self.players):
             if player['active']:
@@ -43,7 +56,8 @@ class TexasHoldEm:
                 if idx == 0:  # Player 0 is who we are optimizing for in the neural network that we are training
                     state = self.get_state(0)
                     action_idx = self.agent.choose_action(state)
-                    action = ['call', 'raise', 'fold'][action_idx]
+                    action = ['call', 'raise'][action_idx] # remove folding
+                    print(f"Action: {action}")
                 else:  # Fixed strategies for Players 1, 2, 3
                     if self.fixed_strategies[idx] == 'random':
                         action = random.choice(['call', 'raise', 'fold'])
@@ -91,19 +105,19 @@ class TexasHoldEm:
             pairs = [card for card, count in counts.items() if count == 2]
             singles = [card for card, count in counts.items() if count == 1]
 
-            # sort so if there is a tie the rank wins
+            # Sort so if there is a tie the rank wins
             triples.sort(reverse=True)
             pairs.sort(reverse=True)
             singles.sort(reverse=True)
 
             if triples:
-                return (3, triples[0])  # Priority 3: Three of a kind, return highest suit with all.
+                return (3, triples[0]) # Priority 3: Three of a kind, return highest suit with all.
             elif len(pairs) >= 2:
-                return (2, pairs[0])      # Priority 2: Two pairs
+                return (2, pairs[0]) # Priority 2: Two pairs
             elif pairs:
-                return (1, pairs[0])         # Priority 1: One pair
+                return (1, pairs[0]) # Priority 1: One pair
             else:
-                return (0, singles[0])                # Priority 0: High card
+                return (0, singles[0]) # Priority 0: High card
             
         player_scores = [(player['id'], hand_strength(player)) for player in active_players]
 
@@ -118,16 +132,12 @@ class TexasHoldEm:
     def calculate_reward(self, player_id, winner_id):
         player = self.players[player_id]
         if winner_id == player_id:
-            # Player wins the pot
+            # Reward for winning, scaled by the pot size
             return self.pot
-        elif not player['active']:
-            # Player folded
-            return -player['current_bet']
         else:
-            # Player lost at showdown
             return -player['current_bet']
     
-    def play_hand(self):
+    def play_hand(self, player_0_strategy='learned'):
         self.shuffle_deck()
         self.community_cards = []  # Clear community cards
         self.reset_bets()  # Reset player bets
@@ -140,8 +150,15 @@ class TexasHoldEm:
         done = False
         state = self.get_state(0)  # Initial state for Player 0
         while not done:
+            if player_0_strategy == 'random':
+                action = random.choice(['call', 'raise'])  # Random strategy
+                action_idx = ['call', 'raise'].index(action)
+            else:
+                action_idx = self.agent.choose_action(state)  # Choose action for Player 0
+                action = ['call', 'raise'][action_idx]
+
             action_idx = self.agent.choose_action(state)  # Choose action for Player 0
-            action = ['call', 'raise', 'fold'][action_idx]
+            action = ['call', 'raise'][action_idx]
             actions.append(action_idx)
 
             # Simulate a round of betting
@@ -178,30 +195,6 @@ class TexasHoldEm:
         self.reset_bets()
         return states, actions, rewards, next_states, dones
 
-
-
-    # def play_hand(self): # Note — this was commented out as it did not have a done criterion
-    #     done = False
-    #     self.shuffle_deck()
-    #     self.deal_hole_cards()
-    #     print("Hole cards dealt.")
-    #     self.betting_round()
-
-    #     self.deal_community_cards(3)
-    #     print("Flop:", self.community_cards)
-    #     self.betting_round()
-
-    #     self.deal_community_cards(1)
-    #     print("Turn:", self.community_cards)
-    #     self.betting_round()
-
-    #     self.deal_community_cards(1)
-    #     print("River:", self.community_cards)
-    #     self.betting_round()
-
-    #     self.determine_winner()
-    #     self.reset_bets()
-
     def get_state(self, player_id):
         """
         Create a vectorized representation of the current game state for the given player.
@@ -217,19 +210,13 @@ class TexasHoldEm:
 
         # Include player stack size and current bet
         state.append(player['stack'])
-        state.append(player['current_bet'])
 
         # Include the opponent stacks and bets. 
         for other_player in self.players:
             if other_player['id'] != player_id:
                 state.append(other_player['stack'])
-                state.append(other_player['current_bet'])
-
-        # Include who's active.
-        state.extend([1 if p['active'] else 0 for p in self.players])
 
         # Include pot size and bet.
-        state.append(self.pot)
         state.append(self.current_bet)
 
         return np.array(state, dtype=np.float32)
@@ -238,3 +225,5 @@ class TexasHoldEm:
 if __name__ == "__main__":
     game = TexasHoldEm()
     game.play_hand()
+    state = game.get_state(0)
+    print(len(state))
